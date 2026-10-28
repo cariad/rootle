@@ -1,0 +1,69 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatch-vcs", "hatchling"]
+
+[dependency-groups]
+dev = [
+  "pyright>=1.1.414",
+  "ruff>=0.17.0",
+]
+
+[project]
+authors = [{ name = "Cariad Eccleston", email = "cariad@cariad.earth" }]
+classifiers = [
+  "Development Status :: 1 - Planning",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Typing :: Typed",
+]
+description = "Rootle about in your file system"
+dynamic = ["version"]
+license = "MIT"
+name = "rootle"
+readme = "README.md"
+requires-python = ">=3.14"
+
+[project.urls]
+Issues = "https://github.com/cariad/rootle/issues"
+Source = "https://github.com/cariad/rootle"
+
+[tool.hatch.version]
+fallback-version = "0.0.0"
+raw-options = { dist_name = "rootle" }
+source = "vcs"
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.14"
+typeCheckingMode = "strict"
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.ruff.lint]
+select = [
+  "ANN",    # Require all type annotations
+  "B",      # flake8-bugbear
+  "D",      # pydocstyle
+  "E",      # pycodestyle errors
+  "F",      # pyflakes
+  "G",      # flake8-logging-format
+  "I",      # isort
+  "LOG",    # flake8-logging
+  "RUF",    # ruff's own rules
+  "SIM",    # flake8-simplify
+  "UP",     # pyupgrade
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.uv]
+cache-keys = [
+  { file = "pyproject.toml" },
+  { git = { commit = true, tags = true } },
+]
+exclude-newer = "7 days"
+required-version = ">=0.12.19, <0.13"
