@@ -49,8 +49,7 @@ def can_chmod_deny_search(directory: Path) -> bool:
         try:
             probe_file.stat()
 
-        # Windows' chmod can't deny search, so this only happens on POSIX.
-        except PermissionError:  # pragma: posix-only
+        except PermissionError:
             return True
 
         return False

@@ -53,6 +53,19 @@ def test_can_chmod_deny_search_is_false_when_chmod_is_ignored(tmp_path: Path) ->
     assert denied is False
 
 
+def test_can_chmod_deny_search_is_true_when_chmod_denies_search(
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `can_chmod_deny_search` is `True` when `chmod` denies the search
+    permission.
+    """
+    with patch.object(Path, "stat", side_effect=PermissionError):
+        denied = can_chmod_deny_search(tmp_path)
+
+    assert denied is True
+
+
 @mark.skipif(
     sys.platform == "win32" or IS_ROOT,
     reason="chmod can't deny search permission on Windows, or to root",
