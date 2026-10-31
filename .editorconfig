@@ -32,7 +32,18 @@ trim_trailing_whitespace = true
 # ```
 
 [*.py]
-indent_size = 4
+# We can't set an `indent_size` for Python files either, because docstrings are
+# Markdown, and a wrapped list item is indented by two spaces:
+#
+# ```python
+# """
+# - This is quite a long unordered list
+#   item, so I wrap it with two spaces to
+#   keep it aligned.
+# """
+# ```
+#
+# `ruff format` enforces four-space indentation for the code itself.
 
 [*.yml]
 indent_size = 2

@@ -1,1 +1,5 @@
-"""Rootle about in your file system."""
+from .resolve import resolve
+
+__all__ = [
+    "resolve",
+]
