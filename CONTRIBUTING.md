@@ -36,6 +36,22 @@
 mise run lint
 ```
 
+## Testing
+
+```bash
+mise run test
+```
+
+## Documentation
+
+The documentation site is built from `docs/` and functions' docstrings.
+
+To build and start the site locally:
+
+```bash
+mise run docs:serve
+```
+
 ## AI policy
 
 AI-assisted contributions are welcomed.

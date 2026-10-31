@@ -4,8 +4,16 @@ requires = ["hatch-vcs", "hatchling"]
 
 [dependency-groups]
 dev = [
+  "coverage-conditional-plugin>=0.9.0",
   "pyright>=1.1.414",
+  "pytest>=9.1.1",
+  "pytest-cov>=7.1.0",
   "ruff>=0.17.0",
+  { include-group = "docs" },
+]
+docs = [
+  "mkdocstrings-python>=2.0.10",
+  "zensical>=0.0.71",
 ]
 
 [project]
@@ -13,12 +21,13 @@ authors = [{ name = "Cariad Eccleston", email = "cariad@cariad.earth" }]
 classifiers = [
   "Development Status :: 1 - Planning",
   "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Typing :: Typed",
 ]
-description = "Rootle about in your file system"
+description = "Python functions to rootle around in your file system"
 dynamic = ["version"]
 license = "MIT"
 name = "rootle"
@@ -29,32 +38,67 @@ requires-python = ">=3.14"
 Issues = "https://github.com/cariad/rootle/issues"
 Source = "https://github.com/cariad/rootle"
 
+[tool.coverage.report]
+fail_under = 100
+show_missing = true
+skip_covered = true
+
+[tool.coverage.coverage_conditional_plugin.rules]
+# Code marked "# pragma: posix-only" is left out of coverage on Windows.
+posix-only = "sys_platform == 'win32'"
+
+[tool.coverage.run]
+branch = true
+plugins = [
+  "coverage_conditional_plugin",
+]
+source = [
+  "rootle",
+]
+
 [tool.hatch.version]
 fallback-version = "0.0.0"
-raw-options = { dist_name = "rootle" }
 source = "vcs"
 
 [tool.pyright]
-include = ["src"]
+include = [
+  "src",
+  "tests",
+]
 pythonVersion = "3.14"
 typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+addopts = "--cov"
+testpaths = [
+  "tests",
+]
 
 [tool.ruff.format]
 line-ending = "lf"
 
 [tool.ruff.lint]
+extend-ignore = [
+  "D100",          # Docstrings in public modules
+  "D104",          # Docstrings in public packages
+  "D205",          # One-line docstring summary followed by detail
+  "D212",          # Summary on the first line (we use D213 instead)
+]
+extend-select = [
+  "D213",          # Summary on the second line
+]
 select = [
-  "ANN",    # Require all type annotations
-  "B",      # flake8-bugbear
-  "D",      # pydocstyle
-  "E",      # pycodestyle errors
-  "F",      # pyflakes
-  "G",      # flake8-logging-format
-  "I",      # isort
-  "LOG",    # flake8-logging
-  "RUF",    # ruff's own rules
-  "SIM",    # flake8-simplify
-  "UP",     # pyupgrade
+  "ANN",           # Require all type annotations
+  "B",             # flake8-bugbear
+  "D",             # pydocstyle
+  "E",             # pycodestyle errors
+  "F",             # pyflakes
+  "G",             # flake8-logging-format
+  "I",             # isort
+  "LOG",           # flake8-logging
+  "RUF",           # ruff's own rules
+  "SIM",           # flake8-simplify
+  "UP",            # pyupgrade
 ]
 
 [tool.ruff.lint.pydocstyle]

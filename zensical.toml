@@ -1,0 +1,56 @@
+[project]
+copyright = "&copy; 2026 Cariad Eccleston"
+nav = [
+  { "Get started" = "index.md" },
+  { "Functions" = [
+    { "resolve" = "functions/resolve.md" },
+  ] },
+  { "Testing" = [
+    { "can_chmod_deny_search" = "testing/can_chmod_deny_search.md" },
+  ] },
+  { "Windows errors" = "winerror.md" },
+]
+repo_name = "cariad/rootle"
+repo_url = "https://github.com/cariad/rootle"
+site_author = "Cariad Eccleston"
+site_description = "Python functions to rootle around in your file system."
+site_name = "rootle documentation"
+site_url = "https://cariad.github.io/rootle/"
+strict = true
+
+[project.theme]
+features = [
+  "content.code.copy",  # Copy button in code blocks
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/cariad/"
+name = "Cariad Eccleston on GitHub"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/linkedin"
+link = "https://www.linkedin.com/in/cariad/"
+name = "Cariad Eccleston on LinkedIn"
+
+[project.plugins.mkdocstrings.handlers.python]
+paths = [
+  "src",
+]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "google"
+show_root_full_path = false
+show_root_heading = true
+show_source = true

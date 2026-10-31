@@ -4,6 +4,14 @@ min_version = "2026.10.11"
 [settings]
 minimum_release_age = "7d"
 
+[tasks."docs:build"]
+description = "Build the documentation site"
+run = "uv run --locked --only-group docs zensical build"
+
+[tasks."docs:serve"]
+description = "Serve the documentation site locally"
+run = "uv run --locked zensical serve"
+
 [tasks.lint]
 description = "Run the linters"
 depends = ["lint:*"]
@@ -37,6 +45,10 @@ run = "uv run --locked pyright"
 [tasks."lint:workflows"]
 description = "Audit GitHub Actions files"
 run = "zizmor --strict-collection ."
+
+[tasks.test]
+description = "Run the tests"
+run = "uv run --locked pytest"
 
 # Check for updates: mise outdated --bump
 [tools]
