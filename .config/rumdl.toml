@@ -16,6 +16,9 @@ strict = true  # Check code blocks too
 "docs/testing/*.md" = [
   "MD041",
 ]
+"docs/types/*.md" = [
+  "MD041",
+]
 "docs/winerror.md" = [
   "MD041",
 ]
