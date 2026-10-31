@@ -62,6 +62,14 @@ from tests.marks import posix_only, windows_only
             "file-path-link/x",
             "dir/file.md/child/x",
         ),
+        (
+            "missing/../file-path-link",
+            "dir/file.md/child",
+        ),
+        (
+            "missing/../file-path-link/x",
+            "dir/file.md/child/x",
+        ),
     ],
 )
 def test_resolve(path: str, expect: str, tmp_path: Path) -> None:

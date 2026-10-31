@@ -99,8 +99,18 @@ def resolve(path: PathLike[str] | str) -> Path:
 
             # A symlink can't be kept as a name, because the file might be on the path
             # where it leads, so follow it by hand instead.
-            if current.is_symlink():
-                current = current.parent / current.readlink()
+            #
+            # Look for it in its parent's resolved path, because a `..` after a
+            # directory that doesn't exist steps up in `realpath` but not in the file
+            # system. If the parent leads through a file too, then nothing can be there.
+            try:
+                parent = realpath(current.parent, strict=ALLOW_MISSING)
+                link = Path(parent, current.name)
+            except NotADirectoryError:
+                link = current
+
+            if link.is_symlink():
+                current = link.parent / link.readlink()
                 continue
 
             tail.insert(0, current.name)  # Keep the name...
