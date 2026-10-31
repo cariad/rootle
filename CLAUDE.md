@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-rootle is a Python package with functions for interacting with the file systems. Each function lives in a module of its own with the same name (`src/rootle/<name>.py`) and is re-exported from `rootle`. Helpers for testing code that uses the file system live in `rootle.testing` the same way (`src/rootle/testing/<name>.py`). Windows error codes live in `rootle.winerror` (`src/rootle/winerror.py`), like Python's `errno`, documented on one page, `docs/winerror.md`.
+rootle is a Python package with functions for interacting with the file systems. Each function lives in a module of its own with the same name (`src/rootle/<name>.py`) and is re-exported from `rootle`. Helpers for testing code that uses the file system live in `rootle.testing` the same way (`src/rootle/testing/<name>.py`). Types that functions return live in `rootle.types`, each in a module named after it in lowercase (`src/rootle/types/identity.py` for `Identity`). Windows error codes live in `rootle.winerror` (`src/rootle/winerror.py`), like Python's `errno`, documented on one page, `docs/winerror.md`.
 
 ## Commands
 
@@ -22,7 +22,7 @@ mise exec -- uv run --locked ruff format       # Format Python
 - `.config/mise.toml`•`min_version` ↔ the mise-action `version` in every job that installs mise, in `.github/workflows/ci.yml` and `.github/workflows/release.yml`.
 - After changing `.config/mise.toml`•`tools`, run `mise lock`, because CI sets `MISE_LOCKED=1`.
 - Every `lint:*` task in `.config/mise.toml` ↔ a step of its own in `.github/workflows/ci.yml`'s `lint` job.
-- Every function exported from `rootle` ↔ its own page `docs/functions/<name>.md` and its entry under "Functions" in `zensical.toml`•`project`•`nav`. Likewise for `rootle.testing`, with `docs/testing/<name>.md` and "Testing". `tests/test_docs.py` checks both, for every module in its `SECTIONS`.
+- Every function exported from `rootle` ↔ its own page `docs/functions/<name>.md` and its entry under "Functions" in `zensical.toml`•`project`•`nav`. Likewise for `rootle.testing`, with `docs/testing/<name>.md` and "Testing", and for `rootle.types`, with `docs/types/<module>.md` and "Types". `tests/test_docs.py` checks both, for every module in its `SECTIONS`.
 - `.config/mise.toml`•`tools`•`uv` ↔ `pyproject.toml`•`tool.uv`•`required-version`, which it must satisfy. The range's floor must never be above the uv that Dependabot's uv updater bundles (0.12.19 on 2026-10-18), or every one of Dependabot's uv updates fails.
 - `pyproject.toml`•`project`•`requires-python` ↔ `pyproject.toml`•`tool.pyright`•`pythonVersion` ↔ `.python-version`.
 

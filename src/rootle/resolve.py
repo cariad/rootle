@@ -3,6 +3,8 @@ from os import PathLike, altsep, fspath, sep, strerror
 from os.path import ALLOW_MISSING, realpath
 from pathlib import Path
 
+from rootle.exceptions import _os_error
+
 
 def resolve(path: PathLike[str] | str) -> Path:
     """
@@ -16,11 +18,15 @@ def resolve(path: PathLike[str] | str) -> Path:
     can't be read or symlinks loop, rather than guessing where the path leads, and it
     keeps the parts of a path after a file.
 
+    Two paths to the same file can resolve to different names — for example, through a
+    hard link — so compare paths with `identity` rather than by name.
+
     **Linux & macOS:**
 
     - A `..` after a file raises an error.
     - Each name in the resolved path is kept exactly as `path` gave it, even when the
-      file system stores it in a different case or Unicode form.
+      file system stores it in a different case or Unicode form, so two spellings of
+      the same file's name resolve to different names.
 
     **Windows:**
 
@@ -90,12 +96,7 @@ def resolve(path: PathLike[str] | str) -> Path:
             #
             # A path with no names left, like "/", has nothing to drop.
             if current.name in ("", ".."):
-                raise NotADirectoryError(
-                    ex.errno,
-                    ex.strerror,
-                    fspath(path),
-                    getattr(ex, "winerror", None),
-                ) from ex
+                raise _os_error.with_path(ex, path) from ex
 
             # A symlink can't be kept as a name, because the file might be on the path
             # where it leads, so follow it by hand instead.
@@ -120,19 +121,8 @@ def resolve(path: PathLike[str] | str) -> Path:
         except OSError as ex:
             # Something horrible has happened at the current path. Since `ex` describes
             # the current path, we'll raise our own `OSError` to describe the full path
-            # as it was given to this function, since that's probably useful for our
-            # caller.
-            #
-            # Keep Windows' own error code, because Windows maps many of them to the
-            # same `errno`. Other platforms ignore it.
-            #
-            # An error made from a message alone has no `strerror`, so keep its message.
-            raise OSError(
-                ex.errno,
-                ex.strerror or str(ex),
-                fspath(path),
-                getattr(ex, "winerror", None),
-            ) from ex
+            # as it was given to this function.
+            raise _os_error.with_path(ex, path) from ex
 
         resolved = Path(canon).joinpath(*tail)
 

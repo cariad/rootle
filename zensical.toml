@@ -3,10 +3,15 @@ copyright = "&copy; 2026 Cariad Eccleston"
 nav = [
   { "Get started" = "index.md" },
   { "Functions" = [
+    { "identity" = "functions/identity.md" },
     { "resolve" = "functions/resolve.md" },
+    { "status" = "functions/status.md" },
   ] },
   { "Testing" = [
     { "can_chmod_deny_search" = "testing/can_chmod_deny_search.md" },
+  ] },
+  { "Types" = [
+    { "Identity" = "types/identity.md" },
   ] },
   { "Windows errors" = "winerror.md" },
 ]
