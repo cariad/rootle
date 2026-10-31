@@ -80,7 +80,9 @@ def status(path: PathLike[str] | str) -> stat_result | None:
     try:
         return stat(resolved)
 
-    except NotADirectoryError:
+    # Windows reports a path through a file as missing, so `NotADirectoryError` is
+    # raised here only on POSIX. Either way, nothing exists at the path.
+    except NotADirectoryError:  # pragma: posix-only
         # `NotADirectoryError` means that one of the path's parents is a file, so
         # nothing can exist at the path.
         return None
