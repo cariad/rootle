@@ -1,5 +1,6 @@
 from contextlib import suppress
 from os import PathLike, altsep, fspath, sep, stat, stat_result
+from os.path import isabs
 
 from rootle.exceptions import _os_error
 
@@ -67,7 +68,10 @@ def status(path: PathLike[str] | str) -> stat_result | None:
     """
     # A path that ends with a separator is left to `resolve`, which raises when it leads
     # to a file.
-    if fspath(path)[-1:] not in (sep, altsep):
+
+    # So is a relative path, because `stat` can still find `.` and `..` after the
+    # working directory is gone, and that mustn't pass.
+    if isabs(path) and fspath(path)[-1:] not in (sep, altsep):
         # A path that can be `stat`-ed already names the file that it resolves to, so
         # it needn't be resolved. An error is left to the route below to describe.
         with suppress(OSError):

@@ -257,8 +257,17 @@ def test_status_raises_when_stepping_up_from_file_on_posix(tmp_path: Path) -> No
     sys.platform == "win32",
     reason="Removes the working directory, which Windows won't allow",
 )
+@mark.parametrize(
+    "path",
+    [
+        ".",
+        "..",
+        "doc.md",
+    ],
+)
 def test_status_raises_when_working_directory_is_gone_on_posix(
     monkeypatch: MonkeyPatch,
+    path: str,
     tmp_path: Path,
 ) -> None:
     """
@@ -272,9 +281,9 @@ def test_status_raises_when_working_directory_is_gone_on_posix(
     working.rmdir()
 
     with raises(FileNotFoundError) as ex:
-        status("doc.md")
+        status(path)
 
-    assert ex.value.filename == "doc.md"
+    assert ex.value.filename == path
 
 
 @windows_only
