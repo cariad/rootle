@@ -1,6 +1,8 @@
-from errno import EACCES
-from os import PathLike, fspath
+from os import PathLike
 
+from rootle.exceptions import _permission_error
+
+from ._identity_of_status import identity_of_status
 from .status import status
 from .types import Identity
 
@@ -18,9 +20,10 @@ def identity(path: PathLike[str] | str) -> Identity | None:
     Nothing exists at a missing path, so it has no identity, `None`, and two missing
     paths compare as equal. Check for `None` before comparing.
 
-    The path is resolved with `resolve` before it's identified, so a `..` after a
-    directory that doesn't exist yet steps up the same way it will once the directory
-    is created. For example, `missing/../doc.md` is identified as `doc.md`.
+    The path is resolved with [`resolve`][rootle.resolve.resolve] before it's
+    identified, so a `..` after a directory that doesn't exist yet steps up the same
+    way it will once the directory is created. For example, `missing/../doc.md` is
+    identified as `doc.md`.
 
     **Linux & macOS:** A `..` after a file raises an error.
 
@@ -33,7 +36,8 @@ def identity(path: PathLike[str] | str) -> Identity | None:
         path: Path to the file to identify.
 
     Returns:
-        The file's identity, or `None` when nothing exists at `path`.
+        The file's [identity][rootle.types.identity.Identity], or `None` when nothing
+        exists at `path`.
 
     Raises:
         OSError:
@@ -41,8 +45,9 @@ def identity(path: PathLike[str] | str) -> Identity | None:
               it, symlinks loop, a `..` steps up from a file on Linux or macOS, or when
               the path is relative and the working directory is gone. A safety check
               that can't be made must fail rather than pass.
-            - When `path` ends with a separator, which says it's a directory, but leads
-              to a file.
+            - When `path` ends with a separator or `.`, which says it's a directory, but
+              leads to a file.
+            - When `path` is empty, which names nothing.
             - When the file exists but its identity can't be read, like when Windows
               can't open it.
 
@@ -77,17 +82,9 @@ def identity(path: PathLike[str] | str) -> Identity | None:
     if st is None:
         return None
 
-    # When Windows can't open a file, it reads the file's attributes from its directory
-    # instead, which has no volume serial number or file index, so both are zero. Every
-    # such file would share that identity, so it mustn't pass as one.
-    if st.st_dev == 0 and st.st_ino == 0:
-        raise PermissionError(
-            EACCES,
-            "The file's identity can't be read",
-            fspath(path),
-        )
+    found = identity_of_status(st)
 
-    return Identity(
-        device=st.st_dev,
-        inode=st.st_ino,
-    )
+    if found is None:
+        raise _permission_error.unreadable_identity_error(path)
+
+    return found

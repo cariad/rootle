@@ -1,25 +1,28 @@
-from errno import ENOTDIR
-from os import PathLike, altsep, fspath, sep, strerror
+from errno import ENOENT
+from os import PathLike, fspath, strerror
 from os.path import ALLOW_MISSING, realpath
 from pathlib import Path
 
-from rootle.exceptions import _os_error
+from rootle.exceptions import _not_a_directory_error, _os_error
+
+from .ends_like_directory import ends_like_directory
 
 
 def resolve(path: PathLike[str] | str) -> Path:
     """
     Resolve `path` through every symlink it contains, whether or not each part exists.
 
-    Like `os.path.realpath`, any part that doesn't exist is kept, and a `..` after a
-    directory that doesn't exist still steps up as if it does. For example,
-    `missing/../doc.md` resolves to `doc.md`.
+    Like [`os.path.realpath`][os.path.realpath], any part that doesn't exist is kept,
+    and a `..` after a directory that doesn't exist still steps up as if it does. For
+    example, `missing/../doc.md` resolves to `doc.md`.
 
     Unlike `os.path.realpath`, this function raises an error when a part of the path
     can't be read or symlinks loop, rather than guessing where the path leads, and it
     keeps the parts of a path after a file.
 
     Two paths to the same file can resolve to different names — for example, through a
-    hard link — so compare paths with `identity` rather than by name.
+    hard link — so compare paths with [`identity`][rootle.identity.identity] rather
+    than by name.
 
     **Linux & macOS:**
 
@@ -45,8 +48,9 @@ def resolve(path: PathLike[str] | str) -> Path:
             - When a part of the path can't be read — for example, when permissions deny
               it, symlinks loop, a `..` steps up from a file on Linux or macOS, or when
               the path is relative and the working directory is gone.
-            - When `path` ends with a separator, which says it's a directory, but leads
-              to a file.
+            - When `path` ends with a separator or `.`, which says it's a directory, but
+              leads to a file.
+            - When `path` is empty, which names nothing.
 
             The error names `path` as it was given.
 
@@ -74,6 +78,15 @@ def resolve(path: PathLike[str] | str) -> Path:
         # Path("/docs/v2/guide.md/intro.md")
         ```
     """
+    # `Path` reads an empty path as `.`, the working directory, but it names nothing,
+    # like `os.stat` says.
+    if not fspath(path):
+        raise FileNotFoundError(
+            ENOENT,
+            strerror(ENOENT),
+            fspath(path),
+        )
+
     current = Path(path)
     tail: list[str] = []
 
@@ -126,15 +139,11 @@ def resolve(path: PathLike[str] | str) -> Path:
 
         resolved = Path(canon).joinpath(*tail)
 
-        # `Path` drops a trailing separator, which says that the path is a directory, so
-        # check that it is one.
+        # `Path` drops a trailing separator or `.`, which says that the path is a
+        # directory, so check that it is one.
         is_file = resolved.exists() and not resolved.is_dir()
 
-        if is_file and fspath(path)[-1:] in (sep, altsep):
-            raise NotADirectoryError(
-                ENOTDIR,
-                strerror(ENOTDIR),
-                fspath(path),
-            )
+        if is_file and ends_like_directory(path):
+            raise _not_a_directory_error.not_a_directory(path)
 
         return resolved

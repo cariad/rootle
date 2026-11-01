@@ -114,13 +114,34 @@ def test_status_is_none_when_nothing_exists(path: str, tmp_path: Path) -> None:
     assert found is None
 
 
-def test_status_raises_for_file_with_trailing_separator(tmp_path: Path) -> None:
+def test_status_raises_for_empty_path() -> None:
+    """
+    Assert that `status` raises `FileNotFoundError` for an empty path, which names
+    nothing, rather than reading it as the working directory.
+    """
+    with raises(FileNotFoundError) as ex:
+        status("")
+
+    assert ex.value.filename == ""
+
+
+@mark.parametrize(
+    "suffix",
+    [
+        "/",
+        "/.",
+    ],
+)
+def test_status_raises_for_file_with_trailing_separator(
+    suffix: str,
+    tmp_path: Path,
+) -> None:
     """
     Assert that `status` raises `NotADirectoryError` for a file given with a trailing
-    separator, which says that it's a directory, naming the path as it was given.
+    separator or `.`, which says that it's a directory, naming the path as it was given.
     """
     (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
-    path = f"{tmp_path / 'file.md'}/"
+    path = f"{tmp_path / 'file.md'}{suffix}"
 
     with raises(NotADirectoryError) as ex:
         status(path)
@@ -179,6 +200,10 @@ def test_status_raises_when_network_path_is_unreachable(tmp_path: Path) -> None:
 
     with (
         patch("rootle.status.stat", side_effect=_UnreachableNetworkPathError()),
+        patch(
+            "rootle._status_of_resolved.stat",
+            side_effect=_UnreachableNetworkPathError(),
+        ),
         raises(FileNotFoundError) as ex,
     ):
         status(path)
@@ -226,6 +251,10 @@ def test_status_raises_when_stat_fails(tmp_path: Path) -> None:
 
     with (
         patch("rootle.status.stat", side_effect=PermissionError(EACCES, "Denied")),
+        patch(
+            "rootle._status_of_resolved.stat",
+            side_effect=PermissionError(EACCES, "Denied"),
+        ),
         raises(PermissionError) as ex,
     ):
         status(path)

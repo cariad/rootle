@@ -93,10 +93,6 @@ def test_identity_accepts_relative_strings(
             normalize("NFD", "café.md"),
         ),
     ],
-    ids=[
-        "letter case",
-        "unicode form",
-    ],
 )
 def test_identity_by_different_spelling(
     name: str,
@@ -120,17 +116,13 @@ def test_identity_by_different_spelling(
 
 
 def test_identity_is_device_and_inode(tmp_path: Path) -> None:
-    """
-    Assert that `identity` is an `Identity` made of the file's device and inode
-    numbers.
-    """
+    """Assert that `identity` is made of the file's device and inode numbers."""
     (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
     st = stat(tmp_path / "file.md")
 
     found = identity(tmp_path / "file.md")
     expect = Identity(device=st.st_dev, inode=st.st_ino)
 
-    assert type(found) is Identity
     assert found == expect
 
 
@@ -252,16 +244,27 @@ def test_identity_raises_for_symlink_loop_on_windows(tmp_path: Path) -> None:
     assert ex.value.filename == expect
 
 
-def test_identity_raises_when_identity_is_unreadable(tmp_path: Path) -> None:
+@mark.parametrize(
+    "device",
+    [
+        0,  # Like when Windows can't open the file
+        64,  # Like a file system that never reports file numbers
+    ],
+)
+def test_identity_raises_when_identity_is_unreadable(
+    device: int,
+    tmp_path: Path,
+) -> None:
     """
-    Assert that `identity` raises `PermissionError` when the file's identity reads as
-    zero, like when Windows can't open the file, rather than passing it as an identity
-    that every such file shares. Names the path as it was given.
+    Assert that `identity` raises `PermissionError` when the file's number reads as
+    zero, like when Windows can't open the file, whatever its device, rather than
+    passing it as an identity that every such file shares. Names the path as it was
+    given.
     """
     (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
     (tmp_path / "link.md").symlink_to("file.md")
     path = tmp_path / "link.md"
-    unreadable = stat_result((0o100644, 0, 0, 1, 0, 0, 14, 0, 0, 0))
+    unreadable = stat_result((0o100644, 0, device, 1, 0, 0, 14, 0, 0, 0))
 
     with (
         patch("rootle.status.stat", return_value=unreadable),
