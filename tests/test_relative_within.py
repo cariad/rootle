@@ -2,6 +2,7 @@ import sys
 from errno import EACCES, ELOOP, ENOENT
 from os import PathLike, link, stat, stat_result
 from pathlib import Path, PurePath
+from subprocess import DEVNULL, run
 from unicodedata import normalize
 from unittest.mock import patch
 
@@ -235,7 +236,28 @@ def test_relative_within_is_none_when_directory_is_missing(tmp_path: Path) -> No
     assert found is None
 
 
+@mark.parametrize(
+    (
+        "path",
+        "target",
+    ),
+    [
+        # The symlink appears at the end of the path, and leads to the directory.
+        (
+            "upload/x",
+            "dir",
+        ),
+        # The symlink appears within the path, and leads to the directory's parent, so
+        # the rest of the path names the directory.
+        (
+            "upload/x/dir/file.md",
+            ".",
+        ),
+    ],
+)
 def test_relative_within_is_none_when_symlink_appears_after_resolving(
+    path: str,
+    target: str,
     tmp_path: Path,
 ) -> None:
     """
@@ -245,11 +267,63 @@ def test_relative_within_is_none_when_symlink_appears_after_resolving(
     """
     (tmp_path / "dir").mkdir()
     (tmp_path / "upload").mkdir()
-    path = tmp_path / "upload" / "x"
+
+    (tmp_path / "dir" / "file.md").write_text(
+        "Hello, world!\n",
+        encoding="utf-8",
+    )
 
     # Resolve the path before the symlink appears, as if it appeared in between.
+    resolved = resolve(tmp_path / path)
+
+    (tmp_path / "upload" / "x").symlink_to(
+        tmp_path / target,
+        target_is_directory=True,
+    )
+
+    with patch("rootle.relative_within.resolve", return_value=resolved):
+        found = relative_within(
+            tmp_path / path,
+            tmp_path / "dir",
+        )
+
+    assert found is None
+
+
+@windows_only
+def test_relative_within_is_none_when_junction_appears_after_resolving_on_windows(
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `relative_within` doesn't follow a directory junction that appears in
+    the path after it's resolved, so a path that resolved outside of the directory
+    can't be swapped into it.
+    """
+    (tmp_path / "dir").mkdir()
+    (tmp_path / "upload").mkdir()
+
+    (tmp_path / "dir" / "file.md").write_text(
+        "Hello, world!\n",
+        encoding="utf-8",
+    )
+
+    path = tmp_path / "upload" / "x" / "dir" / "file.md"
+
+    # Resolve the path before the junction appears, as if it appeared in between.
     resolved = resolve(path)
-    path.symlink_to(tmp_path / "dir", target_is_directory=True)
+
+    run(
+        [
+            "cmd",
+            "/c",
+            "mklink",
+            "/J",
+            str(tmp_path / "upload" / "x"),
+            str(tmp_path),
+        ],
+        check=True,
+        stdout=DEVNULL,
+    )
 
     with patch("rootle.relative_within.resolve", return_value=resolved):
         found = relative_within(
@@ -646,6 +720,32 @@ def test_relative_within_raises_when_permission_denied(
 
     expect = f"{tmp_path}/{named}"
 
+    assert ex.value.filename == expect
+
+
+def test_relative_within_raises_when_rechecking_part_fails(tmp_path: Path) -> None:
+    """
+    Assert that `relative_within` raises when a part of the path resolves, but can't be
+    resolved again when it's checked, like when it changes in between, naming the path
+    as it was given rather than the part. A safety check that can't be made must fail
+    rather than pass.
+    """
+    (tmp_path / "dir").mkdir()
+    path = tmp_path / "dir" / "file.md"
+    error = PermissionError(EACCES, "Permission denied")
+
+    with (
+        patch("rootle.relative_within.realpath", side_effect=error),
+        raises(OSError) as ex,
+    ):
+        relative_within(
+            path,
+            tmp_path / "dir",
+        )
+
+    expect = str(path)
+
+    assert ex.value.errno == EACCES
     assert ex.value.filename == expect
 
 

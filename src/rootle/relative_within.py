@@ -1,13 +1,33 @@
-from os import PathLike
-from pathlib import PurePath
+from os import PathLike, stat_result
+from os.path import ALLOW_MISSING, realpath
+from pathlib import Path, PurePath
 from stat import S_ISDIR
 
-from rootle.exceptions import _not_a_directory_error, _permission_error
+from rootle.exceptions import _not_a_directory_error, _os_error, _permission_error
 
 from ._identity_of_status import identity_of_status
 from ._status_of_resolved import status_of_resolved
 from .resolve import resolve
 from .status import status
+
+
+def _resolves_to_itself(part: Path, path: PathLike[str] | str) -> bool:
+    """
+    Check whether `part`, a part of the path that `path` resolved to, still resolves to
+    itself, so that a path through it isn't redirected somewhere else, like by a symlink
+    or a Windows directory junction that's appeared since. Errors name `path` as it was
+    given.
+    """
+    try:
+        canon = realpath(
+            part,
+            strict=ALLOW_MISSING,
+        )
+
+    except OSError as ex:
+        raise _os_error.with_path(ex, path) from ex
+
+    return Path(canon) == part
 
 
 def relative_within(
@@ -30,6 +50,11 @@ def relative_within(
     `TEMPLATES/build` for `templates/build` on macOS's default APFS, is still within
     `templates`. A path that doesn't exist yet is judged by its nearest parents that
     do.
+
+    Each part of the resolved path is checked again as it's compared, so a symlink that
+    appears in the path after it's resolved isn't followed into `directory`. The answer
+    is only true at the moment it's made, though. A path that changes while it's
+    checked, or afterwards, can lead somewhere else by the time it's used.
 
     Nothing can be within a directory that doesn't exist, so a missing `directory`
     returns `None`. Nothing can be within a file either, so a `directory` that's a file
@@ -143,24 +168,39 @@ def relative_within(
     if directory_identity is None:
         raise _permission_error.unreadable_identity_error(directory)
 
-    # Every parent of the resolved path is resolved already, so it needn't be resolved
-    # again. It had no symlinks, so one that's appeared since mustn't be followed out of
-    # the path that was checked.
-    for parent in (resolved, *resolved.parents):
-        parent_status = status_of_resolved(
-            parent,
+    # The resolved path had no symlinks, so one that's appeared since mustn't be
+    # followed out of the path that was checked.
+    #
+    # Reading a part's status follows any symlink in the parts before it, so walk down
+    # from the root, and stop at the first part that doesn't resolve to itself any more.
+    # The parts after it, if any, aren't on the path that was checked.
+    #
+    # A part that resolved to itself, like a folder that Windows mounts a volume in,
+    # still does, so it doesn't stop the walk.
+    parts: list[tuple[Path, stat_result]] = []
+
+    for part in reversed((resolved, *resolved.parents)):
+        part_status = status_of_resolved(
+            part,
             path,
             follow_symlinks=False,
         )
 
-        if parent_status is None:
-            continue
+        if part_status is None:
+            break
 
+        parts.append((part, part_status))
+
+        if not _resolves_to_itself(part, path):
+            break
+
+    # Compare from the end, so the nearest part that's the directory wins.
+    for part, part_status in reversed(parts):
         # The directory's identity could be read, so a part whose identity can't be
         # read, `None`, isn't the directory, and never compares as equal to it.
-        parent_identity = identity_of_status(parent_status)
+        part_identity = identity_of_status(part_status)
 
-        if parent_identity == directory_identity:
-            return PurePath(resolved.relative_to(parent))
+        if part_identity == directory_identity:
+            return PurePath(resolved.relative_to(part))
 
     return None
