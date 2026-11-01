@@ -108,6 +108,24 @@ def test_ends_like_directory_ignores_backslash_on_posix(path: str) -> None:
 @mark.parametrize(
     "path",
     [
+        "C:.",
+        "C:..",
+    ],
+)
+@posix_only
+def test_ends_like_directory_ignores_drive_on_posix(path: str) -> None:
+    """
+    Assert that `ends_like_directory` doesn't read a drive on POSIX, where `C:` is an
+    ordinary start to a name.
+    """
+    found = ends_like_directory(path)
+
+    assert found is False
+
+
+@mark.parametrize(
+    "path",
+    [
         "docs\\",
         "docs\\.",
         "docs\\..",
@@ -121,3 +139,46 @@ def test_ends_like_directory_reads_backslash_as_separator_on_windows(
     found = ends_like_directory(path)
 
     assert found is True
+
+
+@mark.parametrize(
+    (
+        "path",
+        "expect",
+    ),
+    [
+        (
+            "C:.",
+            True,
+        ),
+        (
+            "C:..",
+            True,
+        ),
+        (
+            "C:",
+            False,
+        ),
+        (
+            "C:docs",
+            False,
+        ),
+        (
+            "\\\\server\\share",
+            False,
+        ),
+        (
+            "\\\\server\\share\\",
+            True,
+        ),
+    ],
+)
+@windows_only
+def test_ends_like_directory_strips_drive_on_windows(path: str, expect: bool) -> None:
+    """
+    Assert that `ends_like_directory` takes the drive or share off a path on Windows
+    before reading its last name.
+    """
+    found = ends_like_directory(path)
+
+    assert found is expect

@@ -1,4 +1,5 @@
 from os import PathLike, altsep, fspath, sep
+from os.path import splitdrive
 
 
 def ends_like_directory(path: PathLike[str] | str) -> bool:
@@ -12,7 +13,8 @@ def ends_like_directory(path: PathLike[str] | str) -> bool:
 
     **Linux & macOS:** The separator is `/`.
 
-    **Windows:** The separator is `\` or `/`.
+    **Windows:** The separator is `\` or `/`, and a drive or share comes off first, so
+    `C:.` and `C:..` end like a directory but `C:` alone doesn't.
 
     Args:
         path: Path to check.
@@ -37,6 +39,9 @@ def ends_like_directory(path: PathLike[str] | str) -> bool:
         ```
     """
     name = fspath(path)
+
+    # Only Windows has drives, and a drive on its own names no path component.
+    name = splitdrive(name)[1]
 
     # An empty path names nothing, so it doesn't end like anything.
     if not name:
