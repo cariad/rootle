@@ -132,13 +132,34 @@ def test_resolve_keeps_letter_case_on_posix(tmp_path: Path) -> None:
     assert resolved.name == "DIR"
 
 
-def test_resolve_raises_for_file_with_trailing_separator(tmp_path: Path) -> None:
+def test_resolve_raises_for_empty_path() -> None:
+    """
+    Assert that `resolve` raises `FileNotFoundError` for an empty path, which names
+    nothing, rather than reading it as the working directory.
+    """
+    with raises(FileNotFoundError) as ex:
+        resolve("")
+
+    assert ex.value.filename == ""
+
+
+@mark.parametrize(
+    "suffix",
+    [
+        "/",
+        "/.",
+    ],
+)
+def test_resolve_raises_for_file_with_trailing_separator(
+    suffix: str,
+    tmp_path: Path,
+) -> None:
     """
     Assert that `resolve` raises `NotADirectoryError` for a file given with a trailing
-    separator, which says that it's a directory, naming the path as it was given.
+    separator or `.`, which says that it's a directory, naming the path as it was given.
     """
     (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
-    path = f"{tmp_path / 'file.md'}/"
+    path = f"{tmp_path / 'file.md'}{suffix}"
 
     with raises(NotADirectoryError) as ex:
         resolve(path)

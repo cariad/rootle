@@ -6,10 +6,10 @@ from tempfile import mkdtemp
 
 def can_chmod_deny_search(directory: Path) -> bool:
     """
-    Check whether removing a directory's permissions with `chmod` denies this process
-    the "search" (`x`) permission.
+    Check whether removing a directory's permissions with [`chmod`][os.chmod] denies
+    this process the "search" (`x`) permission.
 
-    The search permission is required by opening or `stat`-ing a file.
+    The search permission is required by opening or [`stat`][os.stat]-ing a file.
 
     This function only checks search, not reading (listing the directory) or writing
     (creating, renaming or deleting files within it).
