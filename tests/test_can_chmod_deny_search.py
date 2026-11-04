@@ -1,19 +1,32 @@
-import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
 
-from pytest import mark
+from pytest import mark, raises
 
 from rootle.testing import can_chmod_deny_search
-from tests.marks import windows_only
-
-IS_ROOT = sys.platform != "win32" and os.geteuid() == 0
+from tests.marks import IS_ROOT, windows_only
 
 
 def test_can_chmod_deny_search_cleans_up(tmp_path: Path) -> None:
     """Assert that `can_chmod_deny_search` removes everything that it creates."""
     can_chmod_deny_search(tmp_path)
+
+    remaining = list(tmp_path.iterdir())
+
+    assert remaining == []
+
+
+def test_can_chmod_deny_search_cleans_up_when_chmod_fails(tmp_path: Path) -> None:
+    """
+    Assert that `can_chmod_deny_search` removes the probe when it isn't permitted to
+    change the probe's permissions, like on a file system owned by another user.
+    """
+    with (
+        patch.object(Path, "chmod", side_effect=PermissionError),
+        raises(PermissionError),
+    ):
+        can_chmod_deny_search(tmp_path)
 
     remaining = list(tmp_path.iterdir())
 
@@ -60,7 +73,10 @@ def test_can_chmod_deny_search_is_true_when_chmod_denies_search(
     Assert that `can_chmod_deny_search` is `True` when `chmod` denies the search
     permission.
     """
-    with patch.object(Path, "stat", side_effect=PermissionError):
+    with (
+        patch.object(Path, "chmod"),
+        patch.object(Path, "stat", side_effect=PermissionError),
+    ):
         denied = can_chmod_deny_search(tmp_path)
 
     assert denied is True
@@ -78,3 +94,16 @@ def test_can_chmod_deny_search_on_posix(tmp_path: Path) -> None:
     denied = can_chmod_deny_search(tmp_path)
 
     assert denied is True
+
+
+def test_can_chmod_deny_search_raises_when_directory_does_not_exist(
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `can_chmod_deny_search` raises `FileNotFoundError` when the directory
+    to probe doesn't exist.
+    """
+    missing = tmp_path / "missing"
+
+    with raises(FileNotFoundError):
+        can_chmod_deny_search(missing)

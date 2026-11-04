@@ -52,8 +52,10 @@ def can_chmod_deny_search(directory: Path) -> bool:
         except PermissionError:
             return True
 
+        finally:
+            probe_dir.chmod(S_IRWXU)
+
         return False
 
     finally:
-        probe_dir.chmod(S_IRWXU)
         rmtree(probe_dir)
