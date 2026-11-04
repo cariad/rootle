@@ -122,3 +122,27 @@ def test_can_chmod_deny_writing_raises_when_directory_does_not_exist(
 
     with raises(FileNotFoundError):
         can_chmod_deny_writing(missing)
+
+
+def test_can_chmod_deny_writing_restores_permissions(tmp_path: Path) -> None:
+    """
+    Assert that `can_chmod_deny_writing` restores the probe's original permissions,
+    because a file system like FAT can silently ignore a `chmod` to any others.
+    """
+    probe_dir = tmp_path / "probe"
+    probe_dir.mkdir()
+    probe_dir.chmod(0o755)  # Like a directory on FAT with the usual dmask, 022
+    expect = probe_dir.stat().st_mode
+
+    with (
+        patch(
+            "rootle.testing.can_chmod_deny_writing.mkdtemp",
+            return_value=str(probe_dir),
+        ),
+        patch("rootle.testing.can_chmod_deny_writing.rmtree"),
+    ):
+        can_chmod_deny_writing(tmp_path)
+
+    restored = probe_dir.stat().st_mode
+
+    assert restored == expect

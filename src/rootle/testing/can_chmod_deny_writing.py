@@ -1,6 +1,6 @@
 from pathlib import Path
 from shutil import rmtree
-from stat import S_IRGRP, S_IROTH, S_IRUSR, S_IRWXU, S_IXGRP, S_IXOTH, S_IXUSR
+from stat import S_IMODE, S_IRGRP, S_IROTH, S_IRUSR, S_IXGRP, S_IXOTH, S_IXUSR
 from tempfile import mkdtemp
 
 
@@ -44,6 +44,8 @@ def can_chmod_deny_writing(directory: Path) -> bool:
     probe_dir = Path(mkdtemp(dir=directory))
 
     try:
+        original_mode = S_IMODE(probe_dir.stat().st_mode)
+
         # chmod(0o555), which keeps every read and search bit rather than only the
         # owner's.
         #
@@ -59,7 +61,7 @@ def can_chmod_deny_writing(directory: Path) -> bool:
             return True
 
         finally:
-            probe_dir.chmod(S_IRWXU)
+            probe_dir.chmod(original_mode)
 
         return False
 
