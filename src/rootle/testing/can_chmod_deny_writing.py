@@ -1,6 +1,6 @@
 from pathlib import Path
 from shutil import rmtree
-from stat import S_IMODE, S_IRGRP, S_IROTH, S_IRUSR, S_IXGRP, S_IXOTH, S_IXUSR
+from stat import S_IMODE, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXU, S_IXGRP, S_IXOTH, S_IXUSR
 from tempfile import mkdtemp
 
 
@@ -61,7 +61,9 @@ def can_chmod_deny_writing(directory: Path) -> bool:
             return True
 
         finally:
-            probe_dir.chmod(original_mode)
+            # The original mode plus every owner permission, which rmtree needs even if
+            # the umask left some out.
+            probe_dir.chmod(original_mode | S_IRWXU)
 
         return False
 
