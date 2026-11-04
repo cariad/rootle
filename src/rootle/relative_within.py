@@ -100,6 +100,7 @@ def relative_within(
             - When `path` or `directory` ends with a separator or `.`, which says it's
               a directory, but leads to a file.
             - When `path` or `directory` is empty, which names nothing.
+            - When `path` or `directory` contains a null character.
             - When `directory` is a file.
             - When `directory` exists but its identity can't be read, like when Windows
               can't open it.

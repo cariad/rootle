@@ -1,5 +1,5 @@
 import sys
-from errno import ELOOP
+from errno import EINVAL, ELOOP
 from pathlib import Path
 
 from pytest import MonkeyPatch, mark, raises, skip
@@ -165,6 +165,49 @@ def test_resolve_raises_for_file_with_trailing_separator(
         resolve(path)
 
     assert ex.value.filename == path
+
+
+@mark.parametrize(
+    "path",
+    [
+        "na\0me.md",
+        "di\0r/file.md",
+        # `file.md` is a file, not a directory, so the parts after it would be kept.
+        "file.md/na\0me.md",
+    ],
+)
+def test_resolve_raises_for_null_character(path: str, tmp_path: Path) -> None:
+    """
+    Assert that `resolve` raises `OSError` for a path that contains a null
+    character.
+    """
+    (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
+    named = tmp_path / path
+
+    with raises(OSError) as ex:
+        resolve(named)
+
+    expect = str(named)
+
+    assert ex.value.errno == EINVAL
+    assert ex.value.filename == expect
+
+
+def test_resolve_raises_for_null_character_in_relative_path(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `resolve` raises `OSError` for a relative path that contains a null
+    character.
+    """
+    monkeypatch.chdir(tmp_path)
+
+    with raises(OSError) as ex:
+        resolve("na\0me.md")
+
+    assert ex.value.errno == EINVAL
+    assert ex.value.filename == "na\0me.md"
 
 
 @posix_only

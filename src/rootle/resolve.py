@@ -51,6 +51,7 @@ def resolve(path: PathLike[str] | str) -> Path:
             - When `path` ends with a separator or `.`, which says it's a directory, but
               leads to a file.
             - When `path` is empty, which names nothing.
+            - When `path` contains a null character.
 
             The error names `path` as it was given.
 
@@ -78,16 +79,22 @@ def resolve(path: PathLike[str] | str) -> Path:
         # Path("/docs/v2/guide.md/intro.md")
         ```
     """
+    name = fspath(path)
+
     # `Path` reads an empty path as `.`, the working directory, but it names nothing,
     # like `os.stat` says.
-    if not fspath(path):
+    if not name:
         raise FileNotFoundError(
             ENOENT,
             strerror(ENOENT),
-            fspath(path),
+            name,
         )
 
-    current = Path(path)
+    # No path can contain a null character.
+    if "\0" in name:
+        raise _os_error.null_character(name)
+
+    current = Path(name)
     tail: list[str] = []
 
     while True:

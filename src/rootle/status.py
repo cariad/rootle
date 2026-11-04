@@ -1,5 +1,5 @@
 from contextlib import suppress
-from os import PathLike, stat, stat_result
+from os import PathLike, fspath, stat, stat_result
 from os.path import isabs
 
 from ._status_of_resolved import status_of_resolved
@@ -39,6 +39,7 @@ def status(path: PathLike[str] | str) -> stat_result | None:
             - When `path` ends with a separator or `.`, which says it's a directory, but
               leads to a file.
             - When `path` is empty, which names nothing.
+            - When `path` contains a null character.
 
             The error names `path` as it was given.
 
@@ -68,10 +69,12 @@ def status(path: PathLike[str] | str) -> stat_result | None:
     """
     # A path that ends like a directory is left to `resolve`, which raises when it
     # leads to a file, because Windows' `stat` drops a trailing separator or `.`.
-
-    # So is a relative path, because `stat` can still find `.` and `..` after the
+    #
+    # ...and so is a relative path, because `stat` can still find `.` and `..` after the
     # working directory is gone, and that mustn't pass.
-    if isabs(path) and not ends_like_directory(path):
+    #
+    # ...and so is a path that holds a null character.
+    if isabs(path) and not ends_like_directory(path) and "\0" not in fspath(path):
         # A path that can be `stat`-ed already names the file that it resolves to, so
         # it needn't be resolved. An error is left to the route below to describe.
         with suppress(OSError):
