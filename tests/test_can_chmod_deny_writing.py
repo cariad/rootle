@@ -48,6 +48,28 @@ def test_can_chmod_deny_writing_cleans_up_when_chmod_is_ignored(
     assert remaining == []
 
 
+def test_can_chmod_deny_writing_cleans_up_when_umask_denies_reading(
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `can_chmod_deny_writing` removes the probe when the umask left the
+    owner's read permission out of it, which `rmtree` needs to list it.
+    """
+    probe_dir = tmp_path / "probe"
+    probe_dir.mkdir()
+    probe_dir.chmod(0o300)  # Like mkdtemp under a umask of 0o400
+
+    with patch(
+        "rootle.testing.can_chmod_deny_writing.mkdtemp",
+        return_value=str(probe_dir),
+    ):
+        can_chmod_deny_writing(tmp_path)
+
+    remaining = list(tmp_path.iterdir())
+
+    assert remaining == []
+
+
 @mark.skipif(
     not IS_ROOT,
     reason="Expects to run as root on POSIX, which ignores write permission",
