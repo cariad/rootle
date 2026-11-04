@@ -1,4 +1,5 @@
 import sys
+from contextlib import suppress
 from pathlib import Path
 from unittest.mock import patch
 
@@ -59,11 +60,17 @@ def test_can_chmod_deny_writing_cleans_up_when_umask_denies_reading(
     probe_dir.mkdir()
     probe_dir.chmod(0o300)  # Like mkdtemp under a umask of 0o400
 
-    with patch(
-        "rootle.testing.can_chmod_deny_writing.mkdtemp",
-        return_value=str(probe_dir),
-    ):
-        can_chmod_deny_writing(tmp_path)
+    try:
+        with patch(
+            "rootle.testing.can_chmod_deny_writing.mkdtemp",
+            return_value=str(probe_dir),
+        ):
+            can_chmod_deny_writing(tmp_path)
+
+    finally:
+        # Let pytest clean up a probe that was left behind, which it can't list.
+        with suppress(FileNotFoundError):
+            probe_dir.chmod(0o700)
 
     remaining = list(tmp_path.iterdir())
 

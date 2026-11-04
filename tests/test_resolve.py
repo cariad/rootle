@@ -5,7 +5,7 @@ from pathlib import Path
 from pytest import MonkeyPatch, mark, raises, skip
 
 from rootle import resolve, winerror
-from rootle.testing import can_chmod_deny_search
+from rootle.testing import can_chmod_deny_search, is_treated_as_same_name
 from tests.marks import posix_only, windows_only
 
 
@@ -122,10 +122,14 @@ def test_resolve_keeps_letter_case_on_posix(tmp_path: Path) -> None:
     Assert that `resolve` keeps each name in the letter case that the path gave it, on
     a case-insensitive file system like macOS's default APFS.
     """
-    (tmp_path / "dir").mkdir()
+    if not is_treated_as_same_name(
+        tmp_path,
+        "dir",
+        "DIR",
+    ):
+        skip("This file system doesn't treat 'DIR' as 'dir'")
 
-    if not (tmp_path / "DIR").exists():
-        skip("This file system is case-sensitive, so 'DIR' isn't 'dir'")
+    (tmp_path / "dir").mkdir()
 
     resolved = resolve(tmp_path / "DIR")
 
