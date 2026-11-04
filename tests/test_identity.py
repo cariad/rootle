@@ -8,7 +8,7 @@ from unittest.mock import patch
 from pytest import MonkeyPatch, mark, raises, skip
 
 from rootle import identity, winerror
-from rootle.testing import can_chmod_deny_search
+from rootle.testing import can_chmod_deny_search, is_treated_as_same_name
 from rootle.types import Identity
 from tests.marks import posix_only, windows_only
 
@@ -103,10 +103,14 @@ def test_identity_by_different_spelling(
     Assert that `identity` is the same for a different spelling of a file's name, on a
     file system that treats it as the same name, like macOS's default APFS.
     """
-    (tmp_path / name).write_text("Hello, world!\n", encoding="utf-8")
-
-    if not (tmp_path / spelling).exists():
+    if not is_treated_as_same_name(
+        tmp_path,
+        name,
+        spelling,
+    ):
         skip(f"This file system doesn't treat {spelling!r} as {name!r}")
+
+    (tmp_path / name).write_text("Hello, world!\n", encoding="utf-8")
 
     found = identity(tmp_path / spelling)
     expect = identity(tmp_path / name)

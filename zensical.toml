@@ -13,6 +13,7 @@ nav = [
     { "can_chmod_deny_listing" = "testing/can_chmod_deny_listing.md" },
     { "can_chmod_deny_search" = "testing/can_chmod_deny_search.md" },
     { "can_chmod_deny_writing" = "testing/can_chmod_deny_writing.md" },
+    { "is_treated_as_same_name" = "testing/is_treated_as_same_name.md" },
   ] },
   { "Types" = [
     { "Identity" = "types/identity.md" },

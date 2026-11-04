@@ -9,7 +9,7 @@ from unittest.mock import patch
 from pytest import MonkeyPatch, mark, raises, skip
 
 from rootle import relative_within, resolve, winerror
-from rootle.testing import can_chmod_deny_search
+from rootle.testing import can_chmod_deny_search, is_treated_as_same_name
 from tests.marks import posix_only, windows_only
 
 
@@ -199,10 +199,14 @@ def test_relative_within_by_different_spelling(
     different spelling, on a file system that treats it as the same name, like macOS's
     default APFS.
     """
-    (tmp_path / name).mkdir()
-
-    if not (tmp_path / spelling).exists():
+    if not is_treated_as_same_name(
+        tmp_path,
+        name,
+        spelling,
+    ):
         skip(f"This file system doesn't treat {spelling!r} as {name!r}")
+
+    (tmp_path / name).mkdir()
 
     found = relative_within(tmp_path / spelling / "file.md", tmp_path / name)
     expect = PurePath("file.md")
@@ -414,10 +418,14 @@ def test_relative_within_keeps_letter_case_on_posix(tmp_path: Path) -> None:
     Assert that `relative_within` keeps the letter case that the path gave it, on a
     case-insensitive file system like macOS's default APFS.
     """
-    (tmp_path / "dir" / "sub").mkdir(parents=True)
+    if not is_treated_as_same_name(
+        tmp_path,
+        "sub",
+        "SUB",
+    ):
+        skip("This file system doesn't treat 'SUB' as 'sub'")
 
-    if not (tmp_path / "dir" / "SUB").exists():
-        skip("This file system is case-sensitive, so 'SUB' isn't 'sub'")
+    (tmp_path / "dir" / "sub").mkdir(parents=True)
 
     found = relative_within(tmp_path / "dir" / "SUB", tmp_path / "dir")
     expect = PurePath("SUB")
