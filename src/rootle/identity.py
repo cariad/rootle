@@ -48,6 +48,7 @@ def identity(path: PathLike[str] | str) -> Identity | None:
             - When `path` ends with a separator or `.`, which says it's a directory, but
               leads to a file.
             - When `path` is empty, which names nothing.
+            - When `path` contains a null character.
             - When the file exists but its identity can't be read, like when Windows
               can't open it.
 

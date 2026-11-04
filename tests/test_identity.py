@@ -1,5 +1,5 @@
 import sys
-from errno import EACCES, ELOOP
+from errno import EACCES, EINVAL, ELOOP
 from os import link, stat, stat_result
 from pathlib import Path
 from unicodedata import normalize
@@ -201,6 +201,49 @@ def test_identity_raises_for_file_with_trailing_separator(tmp_path: Path) -> Non
         identity(path)
 
     assert ex.value.filename == path
+
+
+@mark.parametrize(
+    "path",
+    [
+        "na\0me.md",
+        "di\0r/file.md",
+        # `file.md` is a file, not a directory, so nothing can be within it.
+        "file.md/na\0me.md",
+    ],
+)
+def test_identity_raises_for_null_character(path: str, tmp_path: Path) -> None:
+    """
+    Assert that `identity` raises `OSError` with `EINVAL` for a path that contains a
+    null character.
+    """
+    (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
+    named = tmp_path / path
+
+    with raises(OSError) as ex:
+        identity(named)
+
+    expect = str(named)
+
+    assert ex.value.errno == EINVAL
+    assert ex.value.filename == expect
+
+
+def test_identity_raises_for_null_character_in_relative_path(
+    monkeypatch: MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `identity` raises `OSError` with `EINVAL` for a relative path that
+    contains a null character.
+    """
+    monkeypatch.chdir(tmp_path)
+
+    with raises(OSError) as ex:
+        identity("na\0me.md")
+
+    assert ex.value.errno == EINVAL
+    assert ex.value.filename == "na\0me.md"
 
 
 @posix_only

@@ -1,5 +1,5 @@
 import sys
-from errno import EACCES, ELOOP, ENOENT
+from errno import EACCES, EINVAL, ELOOP, ENOENT
 from os import PathLike, link, stat, stat_result
 from pathlib import Path, PurePath
 from subprocess import DEVNULL, run
@@ -534,6 +534,113 @@ def test_relative_within_raises_for_file_with_trailing_separator(
         )
 
     assert ex.value.filename == path
+
+
+@mark.parametrize(
+    (
+        "path",
+        "directory",
+        "named",
+    ),
+    [
+        (
+            "na\0me.md",
+            ".",
+            "na\0me.md",
+        ),
+        (
+            "di\0r/file.md",
+            ".",
+            "di\0r/file.md",
+        ),
+        (
+            # `file.md` is a file, not a directory, so the parts after it would be kept.
+            "file.md/na\0me.md",
+            ".",
+            "file.md/na\0me.md",
+        ),
+        (
+            # Nothing can exist at `file.md/missing`, so the null name after it would
+            # never be read, and the path would pass as within the directory.
+            "file.md/missing/na\0me.md",
+            ".",
+            "file.md/missing/na\0me.md",
+        ),
+        (
+            "na\0me.md",
+            "missing",
+            "na\0me.md",
+        ),
+        (
+            # Without the check, this path through a file would be `None`.
+            "file.md/na\0me.md",
+            "missing",
+            "file.md/na\0me.md",
+        ),
+        (
+            "file.md",
+            "di\0r",
+            "di\0r",
+        ),
+    ],
+)
+def test_relative_within_raises_for_null_character(
+    directory: str,
+    named: str,
+    path: str,
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `relative_within` raises `OSError` when the path or the directory
+    contains a null character.
+    """
+    (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
+
+    with raises(OSError) as ex:
+        relative_within(tmp_path / path, tmp_path / directory)
+
+    expect = str(tmp_path / named)
+
+    assert ex.value.errno == EINVAL
+    assert ex.value.filename == expect
+
+
+@mark.parametrize(
+    (
+        "path",
+        "directory",
+    ),
+    [
+        (
+            "na\0me",
+            ".",
+        ),
+        (
+            ".",
+            "na\0me",
+        ),
+    ],
+)
+def test_relative_within_raises_for_null_character_in_relative_path(
+    directory: str,
+    monkeypatch: MonkeyPatch,
+    path: str,
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `relative_within` raises `OSError` when the relative path or directory
+    contains a null character.
+    """
+    monkeypatch.chdir(tmp_path)
+
+    with raises(OSError) as ex:
+        relative_within(
+            path,
+            directory,
+        )
+
+    assert ex.value.errno == EINVAL
+    assert ex.value.filename == "na\0me"
 
 
 @posix_only
