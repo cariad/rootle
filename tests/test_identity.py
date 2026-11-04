@@ -108,7 +108,7 @@ def test_identity_by_different_spelling(
         name,
         spelling,
     ):
-        skip(f"This file system doesn't treat {spelling!r} as {name!r}")
+        skip(f"This file system doesn't treat {spelling!a} as {name!a}")
 
     (tmp_path / name).write_text("Hello, world!\n", encoding="utf-8")
 

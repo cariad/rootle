@@ -11,18 +11,22 @@ def is_treated_as_same_name(directory: Path, name: str, alt_name: str) -> bool:
     - `README.md` and `readme.md`
     - the NFC and NFD forms of `café.md`.
 
-    The probe is made in a new directory within `directory`. Some file systems decide
-    this for each directory, like ext4 with case folding and NTFS with case sensitivity
-    turned on, but a new directory takes its parent's setting, so the answer holds for
-    `directory` and the directories made within it.
+    Some file systems choose for each directory how to compare names, and a new
+    directory takes its parent's choice. The probe is made in a new directory within
+    `directory`, so the answer holds for `directory` and for new directories made
+    within it.
+
+    File systems that ignore case or normalisation don't all fold the same characters,
+    so probe with the names that a test uses.
 
     **Linux:** Usually `False` for a different case or Unicode normalisation, because
-    most file systems compare names byte for byte. Some don't, like FAT, which is
-    case-insensitive.
+    most file systems compare names byte for byte. FAT, though, ignores the case of
+    ASCII letters by default, and an ext4 directory with case folding turned on ignores
+    both case and normalisation.
 
-    **macOS:** `True` for a different Unicode normalisation on APFS, HFS+, FAT and
-    exFAT, and for a different case unless APFS or HFS+ was formatted as
-    case-sensitive.
+    **macOS:** `True` for a different case unless APFS or HFS+ was formatted as
+    case-sensitive, and for a different Unicode normalisation on APFS, HFS+, FAT and
+    exFAT.
 
     **Windows:** `True` for a different case unless the directory is case-sensitive,
     but `False` for a different Unicode normalisation, because Windows compares names

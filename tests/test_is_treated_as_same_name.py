@@ -1,4 +1,5 @@
 import sys
+from contextlib import suppress
 from pathlib import Path
 from unicodedata import normalize
 from unittest.mock import patch
@@ -54,15 +55,21 @@ def test_is_treated_as_same_name_cleans_up_when_umask_denies_reading(
     probe_dir.mkdir()
     probe_dir.chmod(0o300)  # Like mkdtemp under a umask of 0o400
 
-    with patch(
-        "rootle.testing.is_treated_as_same_name.mkdtemp",
-        return_value=str(probe_dir),
-    ):
-        is_treated_as_same_name(
-            tmp_path,
-            "file.md",
-            "FILE.md",
-        )
+    try:
+        with patch(
+            "rootle.testing.is_treated_as_same_name.mkdtemp",
+            return_value=str(probe_dir),
+        ):
+            is_treated_as_same_name(
+                tmp_path,
+                "file.md",
+                "FILE.md",
+            )
+
+    finally:
+        # Let pytest clean up a probe that was left behind, which it can't list.
+        with suppress(FileNotFoundError):
+            probe_dir.chmod(0o700)
 
     remaining = list(tmp_path.iterdir())
 
