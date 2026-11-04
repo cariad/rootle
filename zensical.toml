@@ -10,6 +10,7 @@ nav = [
     { "status" = "functions/status.md" },
   ] },
   { "Testing" = [
+    { "can_chmod_deny_listing" = "testing/can_chmod_deny_listing.md" },
     { "can_chmod_deny_search" = "testing/can_chmod_deny_search.md" },
   ] },
   { "Types" = [
@@ -48,6 +49,9 @@ docstring_style = "google"
 show_root_full_path = false
 show_root_heading = true
 show_source = true
+
+[project.plugins.mkdocstrings.handlers.python.options.docstring_options]
+returns_multiple_items = false  # Every "Returns" section describes one value
 
 [project.theme]
 features = [
