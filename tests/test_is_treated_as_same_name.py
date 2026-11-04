@@ -76,6 +76,50 @@ def test_is_treated_as_same_name_cleans_up_when_umask_denies_reading(
     assert remaining == []
 
 
+def test_is_treated_as_same_name_is_false_for_another_file(tmp_path: Path) -> None:
+    """
+    Assert that `is_treated_as_same_name` is `False` when `alt_name` leads somewhere
+    that exists but isn't the probe's file, like `NUL` on Windows.
+    """
+    with patch.object(Path, "samefile", return_value=False):
+        same = is_treated_as_same_name(
+            tmp_path,
+            "file.md",
+            "file.md",
+        )
+
+    assert same is False
+
+
+@mark.parametrize(
+    "alt_name",
+    [
+        "NUL",  # The null device
+        ". ",  # The probe's directory, once Windows drops the trailing space
+    ],
+)
+@windows_only
+def test_is_treated_as_same_name_is_false_for_another_file_on_windows(
+    alt_name: str,
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `is_treated_as_same_name` is `False` on Windows for a name that leads
+    somewhere other than the probe's file, and that it still leads somewhere, without
+    which this test would prove nothing.
+    """
+    leads_somewhere = (tmp_path / alt_name).exists()
+
+    same = is_treated_as_same_name(
+        tmp_path,
+        "file.md",
+        alt_name,
+    )
+
+    assert leads_somewhere is True
+    assert same is False
+
+
 def test_is_treated_as_same_name_is_false_for_different_name(tmp_path: Path) -> None:
     """Assert that `is_treated_as_same_name` is `False` for a different name."""
     same = is_treated_as_same_name(

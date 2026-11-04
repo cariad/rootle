@@ -59,12 +59,19 @@ def is_treated_as_same_name(directory: Path, name: str, alt_name: str) -> bool:
 
     probe_dir = Path(mkdtemp(dir=directory))
     probe_file = probe_dir / name
+    alt_file = probe_dir / alt_name
 
     try:
         probe_file.touch()
 
         try:
-            return (probe_dir / alt_name).exists()
+            # On Windows, a name can lead somewhere other than the probe's file (like
+            # `NUL` to the null device) so check that `alt_name` names the probe's file
+            # — not only that something exists there.
+            #
+            # `exists()` goes first because `samefile()` raises for a name that's
+            # missing or that Windows rejects.
+            return alt_file.exists() and alt_file.samefile(probe_file)
 
         finally:
             probe_file.unlink()
