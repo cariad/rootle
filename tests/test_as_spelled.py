@@ -1,4 +1,4 @@
-from os import stat_result
+from os import link, stat_result
 from pathlib import Path, PurePath, PurePosixPath
 from unicodedata import normalize
 from unittest.mock import patch
@@ -112,6 +112,48 @@ def test_as_spelled_by_different_spelling(
     assert found == expect
 
 
+@mark.parametrize(
+    (
+        "name",
+        "spelling",
+    ),
+    [
+        (
+            "b.md",
+            "B.md",
+        ),
+        (
+            normalize("NFC", "café.md"),
+            normalize("NFD", "café.md"),
+        ),
+    ],
+)
+def test_as_spelled_by_different_spelling_among_hard_links(
+    name: str,
+    spelling: str,
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `as_spelled` spells a name as the hard link that's spelled like it,
+    rather than as another hard link to the same file, on a file system that treats
+    another spelling as the same name, like macOS's default APFS.
+    """
+    if not is_treated_as_same_name(
+        tmp_path,
+        name,
+        spelling,
+    ):
+        skip(f"This file system doesn't treat {spelling!a} as {name!a}")
+
+    (tmp_path / name).write_text("Hello, world!\n", encoding="utf-8")
+    link(tmp_path / name, tmp_path / "a.md")
+
+    found = as_spelled(spelling, tmp_path)
+    expect = PurePath(name)
+
+    assert found == expect
+
+
 def test_as_spelled_does_not_match_name_that_starts_the_same(tmp_path: Path) -> None:
     """
     Assert that `as_spelled` matches only the directory that's named, and not another
@@ -125,6 +167,30 @@ def test_as_spelled_does_not_match_name_that_starts_the_same(tmp_path: Path) -> 
 
     found = as_spelled("SUB", tmp_path)
     expect = PurePath("sub")
+
+    assert found == expect
+
+
+@mark.parametrize(
+    "name",
+    [
+        "a.md",
+        "b.md",
+    ],
+)
+def test_as_spelled_keeps_exact_name_among_hard_links(
+    name: str,
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `as_spelled` keeps a name that's listed exactly as it's given, rather
+    than spelling it as another hard link to the same file.
+    """
+    (tmp_path / "a.md").write_text("Hello, world!\n", encoding="utf-8")
+    link(tmp_path / "a.md", tmp_path / "b.md")
+
+    found = as_spelled(name, tmp_path)
+    expect = PurePath(name)
 
     assert found == expect
 
@@ -192,6 +258,24 @@ def test_as_spelled_keeps_names_when_directory_is_missing(tmp_path: Path) -> Non
     """Assert that `as_spelled` keeps every name when the directory doesn't exist."""
     found = as_spelled("SUB/FILE.md", tmp_path / "missing")
     expect = PurePath("SUB/FILE.md")
+
+    assert found == expect
+
+
+def test_as_spelled_keeps_names_when_hard_links_cannot_be_told_apart(
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `as_spelled` keeps a name, rather than choosing one at random, when
+    the file it names has several hard links in its directory and none is spelled like
+    it, like a symlink to the file.
+    """
+    (tmp_path / "a.md").write_text("Hello, world!\n", encoding="utf-8")
+    link(tmp_path / "a.md", tmp_path / "b.md")
+    (tmp_path / "link.md").symlink_to("a.md")
+
+    found = as_spelled("link.md", tmp_path)
+    expect = PurePath("link.md")
 
     assert found == expect
 

@@ -1,7 +1,32 @@
 from os import PathLike, scandir, stat
 from pathlib import Path, PurePath
+from unicodedata import normalize
 
 from ._identity_of_status import identity_of_status
+
+
+def _folded(name: str) -> str:
+    """Fold the case and Unicode normalisation of `name`, to compare spellings."""
+    return normalize("NFC", name).casefold()
+
+
+def _pick(name: str, matches: list[str]) -> str | None:
+    """
+    Pick the listed spelling of `name` from `matches`, the names in its directory's
+    listing that have its identity, or `None` when that can't be told.
+    """
+    # Hard links in the same directory share an identity, so a name that's listed as
+    # it was given is spelled as it was given.
+    if name in matches:
+        return name
+
+    # `name` names one of the matches, so when there's only one, it's that one, however
+    # the file system compares names.
+    if len(matches) == 1:
+        return matches[0]
+
+    alike = [match for match in matches if _folded(match) == _folded(name)]
+    return alike[0] if len(alike) == 1 else None
 
 
 def as_spelled(
@@ -26,8 +51,15 @@ def as_spelled(
     without symlinks, like one that
     [`relative_within`][rootle.relative_within.relative_within] returns.
 
+    A file's hard links in the same directory share its identity too, so a name that's
+    listed exactly as it's given keeps its spelling. Otherwise, the hard link that's
+    spelled like it, ignoring case and Unicode normalisation, is chosen. When the file
+    has only one name in the directory, that's chosen however the file system compares
+    names.
+
     A name that can't be found, like one that doesn't exist, can't be read, or is `..`,
-    keeps the spelling it was given, and so does every name after it.
+    keeps the spelling it was given, and so does every name after it. So does a name
+    whose hard links can't be told apart.
 
     **Linux & macOS:** [`relative_within`][rootle.relative_within.relative_within]
     keeps the spelling that its path gave each name, so spell its result with this
@@ -85,23 +117,22 @@ def as_spelled(
                 break
 
             with scandir(parent) as entries:
-                listed = next(
-                    (
-                        entry.name
-                        for entry in entries
-                        if not entry.is_symlink()
-                        and not entry.is_junction()
-                        # `entry.stat()` reads no identity on Windows, so read it from
-                        # the file itself. On Linux and macOS, that costs the same.
-                        and identity_of_status(stat(entry.path)) == wanted
-                    ),
-                    None,
-                )
+                matches = [
+                    entry.name
+                    for entry in entries
+                    if not entry.is_symlink()
+                    and not entry.is_junction()
+                    # `entry.stat()` reads no identity on Windows, so read it from the
+                    # file itself. On Linux and macOS, that costs the same.
+                    and identity_of_status(stat(entry.path)) == wanted
+                ]
 
         except OSError, ValueError:
             # The name doesn't exist, can't be read, or holds a null character, so
             # leave it and every name after it as they were given.
             break
+
+        listed = _pick(name, matches)
 
         if listed is None:
             break
