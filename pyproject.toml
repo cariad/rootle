@@ -46,6 +46,8 @@ skip_covered = true
 [tool.coverage.coverage_conditional_plugin.rules]
 # Code marked "# pragma: posix-only" is left out of coverage on Windows.
 posix-only = "sys_platform == 'win32'"
+# Code marked "# pragma: windows-only" is left out of coverage on Linux and macOS.
+windows-only = "sys_platform != 'win32'"
 
 [tool.coverage.run]
 branch = true

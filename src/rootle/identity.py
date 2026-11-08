@@ -7,7 +7,26 @@ from .status import status
 from .types import Identity
 
 
-def identity(path: PathLike[str] | str) -> Identity | None:
+def _identity(path: PathLike[str] | str) -> Identity | None:
+    """Identify the file at `path`, as `identity` does when it's strict."""
+    st = status(path)
+
+    if st is None:
+        return None
+
+    found = identity_of_status(st)
+
+    if found is None:
+        raise _permission_error.unreadable_identity_error(path)
+
+    return found
+
+
+def identity(
+    path: PathLike[str] | str,
+    *,
+    strict: bool = True,
+) -> Identity | None:
     """
     Identify the file at `path`, following every symlink it contains.
 
@@ -32,15 +51,21 @@ def identity(path: PathLike[str] | str) -> Identity | None:
     that raises an error. So does a network path that can't be reached, which Windows
     reports as missing.
 
+    Pass `strict=False` to never raise, so that a path whose identity can't be read is
+    `None`, like a missing one.
+
     Args:
         path: Path to the file to identify.
+        strict: Whether to raise when the identity can't be read. When `False`, return
+            `None` instead.
 
     Returns:
         The file's [identity][rootle.types.identity.Identity], or `None` when nothing
-        exists at `path`.
+        exists at `path`, or when `strict` is `False` and its identity can't be read.
 
     Raises:
-        OSError:
+        OSError: Only when `strict` is `True`:
+
             - When a part of the path can't be read — for example, when permissions deny
               it, symlinks loop, a `..` steps up from a file on Linux or macOS, or when
               the path is relative and the working directory is gone. A safety check
@@ -78,14 +103,11 @@ def identity(path: PathLike[str] | str) -> Identity | None:
         # None
         ```
     """
-    st = status(path)
+    try:
+        return _identity(path)
 
-    if st is None:
+    except OSError:
+        if strict:
+            raise
+
         return None
-
-    found = identity_of_status(st)
-
-    if found is None:
-        raise _permission_error.unreadable_identity_error(path)
-
-    return found

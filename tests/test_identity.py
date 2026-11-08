@@ -148,6 +148,22 @@ def test_identity_is_hashable(tmp_path: Path) -> None:
     assert found == expect
 
 
+def test_identity_is_none_when_identity_is_unreadable_and_not_strict(
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `identity` is `None`, rather than raising, when the file's number reads
+    as zero, like when Windows can't open the file, and it isn't strict.
+    """
+    (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
+    unreadable = stat_result((0o100644, 0, 0, 1, 0, 0, 14, 0, 0, 0))
+
+    with patch("rootle.status.stat", return_value=unreadable):
+        found = identity(tmp_path / "file.md", strict=False)
+
+    assert found is None
+
+
 @mark.parametrize(
     "path",
     [
@@ -165,6 +181,55 @@ def test_identity_is_none_when_nothing_exists(path: str, tmp_path: Path) -> None
     (tmp_path / "dangling.md").symlink_to("missing.md")
 
     found = identity(tmp_path / path)
+
+    assert found is None
+
+
+@mark.parametrize(
+    "path",
+    [
+        # `loop.md` is a symlink to itself.
+        "loop.md",
+        "na\0me.md",
+        # `file.md` is a file, but the trailing separator says that it's a directory.
+        "file.md/",
+    ],
+)
+def test_identity_is_none_when_path_is_unreadable_and_not_strict(
+    path: str,
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `identity` is `None`, rather than raising, for a path that can't be
+    read when it isn't strict.
+    """
+    (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
+    (tmp_path / "loop.md").symlink_to("loop.md")
+
+    found = identity(f"{tmp_path}/{path}", strict=False)
+
+    assert found is None
+
+
+def test_identity_is_none_when_permission_denied_and_not_strict(
+    tmp_path: Path,
+) -> None:
+    """
+    Assert that `identity` is `None`, rather than raising, for a file within a
+    directory that can't be searched, when it isn't strict.
+    """
+    if not can_chmod_deny_search(tmp_path):
+        skip("chmod can't deny search permission here, like on Windows or to root")
+
+    (tmp_path / "noperm").mkdir()
+    (tmp_path / "noperm" / "file.md").write_text("Hello, world!\n", encoding="utf-8")
+    (tmp_path / "noperm").chmod(0)
+
+    try:
+        found = identity(tmp_path / "noperm" / "file.md", strict=False)
+
+    finally:
+        (tmp_path / "noperm").chmod(0o755)
 
     assert found is None
 
@@ -410,6 +475,29 @@ def test_identity_steps_up_from_file_on_windows(tmp_path: Path) -> None:
     (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
 
     found = identity(tmp_path / "file.md" / ".." / "file.md")
+    expect = identity(tmp_path / "file.md")
+
+    assert found is not None
+    assert found == expect
+
+
+@mark.parametrize(
+    "path",
+    [
+        "file.md",
+        "link.md",
+        "missing/../file.md",
+    ],
+)
+def test_identity_when_not_strict(path: str, tmp_path: Path) -> None:
+    """
+    Assert that `identity` identifies a file that can be read the same way whether or
+    not it's strict.
+    """
+    (tmp_path / "file.md").write_text("Hello, world!\n", encoding="utf-8")
+    (tmp_path / "link.md").symlink_to("file.md")
+
+    found = identity(tmp_path / path, strict=False)
     expect = identity(tmp_path / "file.md")
 
     assert found is not None
