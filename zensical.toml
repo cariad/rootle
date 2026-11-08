@@ -3,7 +3,9 @@ copyright = "&copy; 2026 Cariad Eccleston"
 nav = [
   { "Get started" = "index.md" },
   { "Functions" = [
+    { "as_spelled" = "functions/as_spelled.md" },
     { "ends_like_directory" = "functions/ends_like_directory.md" },
+    { "fingerprint" = "functions/fingerprint.md" },
     { "identity" = "functions/identity.md" },
     { "relative_within" = "functions/relative_within.md" },
     { "resolve" = "functions/resolve.md" },
@@ -13,9 +15,14 @@ nav = [
     { "can_chmod_deny_listing" = "testing/can_chmod_deny_listing.md" },
     { "can_chmod_deny_search" = "testing/can_chmod_deny_search.md" },
     { "can_chmod_deny_writing" = "testing/can_chmod_deny_writing.md" },
+    { "edit" = "testing/edit.md" },
     { "is_treated_as_same_name" = "testing/is_treated_as_same_name.md" },
+    { "rewrite_and_keep_times" = "testing/rewrite_and_keep_times.md" },
+    { "save_atomically" = "testing/save_atomically.md" },
+    { "snapshot" = "testing/snapshot.md" },
   ] },
   { "Types" = [
+    { "Fingerprint" = "types/fingerprint.md" },
     { "Identity" = "types/identity.md" },
   ] },
   { "Windows errors" = "winerror.md" },
