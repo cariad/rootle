@@ -11,7 +11,10 @@ def test_snapshot(tmp_path: Path) -> None:
     to a directory.
     """
     (tmp_path / "sub").mkdir()
-    (tmp_path / "sub" / "file.md").write_text("Hello, world!\n", encoding="utf-8")
+
+    # Bytes rather than text, which Windows would write with `\r\n`.
+    (tmp_path / "sub" / "file.md").write_bytes(b"Hello, world!\n")
+
     (tmp_path / "link.md").symlink_to(Path("sub", "file.md"))
     (tmp_path / "linked").symlink_to("sub", target_is_directory=True)
     mode = S_IMODE((tmp_path / "sub" / "file.md").stat().st_mode)

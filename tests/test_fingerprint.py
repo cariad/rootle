@@ -44,7 +44,9 @@ def test_fingerprint_gives_every_field_of_regular_file(tmp_path: Path) -> None:
     and modification times, whether its path is a `Path` or a `str`.
     """
     path = tmp_path / "file.md"
-    path.write_text("Hello, world!\n", encoding="utf-8")
+
+    # Bytes rather than text, which Windows would write with `\r\n`.
+    path.write_bytes(b"Hello, world!\n")
 
     # Move the modification time away from the change time, so that they can't be
     # mistaken for each other.
