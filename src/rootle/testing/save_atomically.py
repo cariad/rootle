@@ -1,5 +1,6 @@
 from os import replace
 from pathlib import Path
+from secrets import token_hex
 
 
 def save_atomically(path: Path, body: str) -> None:
@@ -7,13 +8,16 @@ def save_atomically(path: Path, body: str) -> None:
     Replace a file with a new one, like an editor that saves atomically, so that its
     path names a different file.
 
-    The new file is written beside the old one, with the old one's suffix replaced by
-    `.new`, like `README.new` for `README.md`, and then moved over it with
-    [`os.replace`][os.replace]. Anything already at that name is replaced too.
+    The new file is written beside the old one, under a new name that starts with the
+    old one's stem and ends with `.new`, like `README.1f2e3d4c5b6a7980.new` for
+    `README.md`, and then moved over it with [`os.replace`][os.replace]. The new name
+    is created exclusively, so it never follows a symlink or replaces a file that's
+    already there. When the new file can't be written or moved, it's removed.
 
     The path then names another file, with another
     [identity][rootle.types.identity.Identity], so a change is seen even when the new
-    file has the same size and times as the old one. To rewrite the same file instead,
+    file has the same size and times as the old one. The new file has the permissions
+    of any file that's created, not the old one's. To rewrite the same file instead,
     use [`edit`][rootle.testing.edit.edit].
 
     Args:
@@ -36,6 +40,19 @@ def save_atomically(path: Path, body: str) -> None:
             assert identity(path) != before
         ```
     """
-    new = path.with_suffix(".new")
-    new.write_text(body, encoding="utf-8")
-    replace(new, path)
+    # A name of its own, which can't be `path` itself, even when `path` ends in `.new`.
+    new = path.with_name(f"{path.stem}.{token_hex(8)}.new")
+
+    # Create the file exclusively, so that it never follows a symlink or replaces a file
+    # that's already there, and isn't removed when that fails.
+    file = new.open("x", encoding="utf-8")
+
+    try:
+        with file:
+            file.write(body)
+
+        replace(new, path)
+
+    except BaseException:
+        new.unlink()
+        raise
