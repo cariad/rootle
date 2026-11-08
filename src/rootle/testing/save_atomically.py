@@ -8,11 +8,11 @@ def save_atomically(path: Path, body: str) -> None:
     Replace a file with a new one, like an editor that saves atomically, so that its
     path names a different file.
 
-    The new file is written beside the old one, under a new name that starts with the
-    old one's stem and ends with `.new`, like `README.1f2e3d4c5b6a7980.new` for
-    `README.md`, and then moved over it with [`os.replace`][os.replace]. The new name
-    is created exclusively, so it never follows a symlink or replaces a file that's
-    already there. When the new file can't be written or moved, it's removed.
+    The new file is written beside the old one, under a short, hidden name of its own,
+    like `.1f2e3d4c5b6a7980.new`, and then moved over it with
+    [`os.replace`][os.replace]. The new name is created exclusively, so it never
+    follows a symlink or replaces a file that's already there. When the new file can't
+    be written or moved, it's removed.
 
     The path then names another file, with another
     [identity][rootle.types.identity.Identity], so a change is seen even when the new
@@ -40,8 +40,9 @@ def save_atomically(path: Path, body: str) -> None:
             assert identity(path) != before
         ```
     """
-    # A name of its own, which can't be `path` itself, even when `path` ends in `.new`.
-    new = path.with_name(f"{path.stem}.{token_hex(8)}.new")
+    # A name of its own, which can't be `path` itself, even when `path` ends in `.new`,
+    # and is short whatever `path` is called, so that it's never too long to create.
+    new = path.with_name(f".{token_hex(8)}.new")
 
     # Create the file exclusively, so that it never follows a symlink or replaces a file
     # that's already there, and isn't removed when that fails.

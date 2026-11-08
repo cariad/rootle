@@ -1,7 +1,7 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from pytest import mark, raises
+from pytest import mark, raises, skip
 
 from rootle import identity
 from rootle.testing import save_atomically
@@ -53,7 +53,7 @@ def test_save_atomically_never_follows_symlink(tmp_path: Path) -> None:
     path.write_text("Hello, world!\n", encoding="utf-8")
     target = tmp_path / "target.md"
     target.write_text("Target\n", encoding="utf-8")
-    (tmp_path / "file.0123.new").symlink_to("target.md")
+    (tmp_path / ".0123.new").symlink_to("target.md")
 
     with (
         patch("rootle.testing.save_atomically.token_hex", return_value="0123"),
@@ -66,7 +66,7 @@ def test_save_atomically_never_follows_symlink(tmp_path: Path) -> None:
     names = sorted(p.name for p in tmp_path.iterdir())
 
     expect_names = [
-        "file.0123.new",
+        ".0123.new",
         "file.md",
         "target.md",
     ]
@@ -74,6 +74,32 @@ def test_save_atomically_never_follows_symlink(tmp_path: Path) -> None:
     assert body == "Hello, world!\n"
     assert target_body == "Target\n"
     assert names == expect_names
+
+
+def test_save_atomically_of_longest_name(tmp_path: Path) -> None:
+    """
+    Assert that `save_atomically` replaces a file whose name is as long as most file
+    systems allow, because the new file's name doesn't grow with it.
+    """
+    path = tmp_path / ("a" * 255)
+
+    try:
+        path.write_text("Hello, world!\n", encoding="utf-8")
+
+    except OSError:
+        skip("This file system can't name a file with 255 characters here")
+
+    before = identity(path)
+
+    save_atomically(path, "Hello, rootle!\n")
+
+    body = path.read_text(encoding="utf-8")
+    after = identity(path)
+
+    assert body == "Hello, rootle!\n"
+    assert before is not None
+    assert after is not None
+    assert after != before
 
 
 def test_save_atomically_removes_new_file_when_replacing_fails(tmp_path: Path) -> None:
